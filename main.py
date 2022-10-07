@@ -29,6 +29,8 @@ import random                                         # Random number generator
 from colorama import Fore, Style                      # Make ANSII color codes work on Windows
 from colorama import init as COLORAMA_INIT            # Colorama init
 from dnsdumpster.DNSDumpsterAPI import DNSDumpsterAPI # Finds subdomains
+from bs4 import BeautifulSoup                         # Soup, yummy
+import re                                             # Regex
 #######################################################
 
 PARSER = argparse.ArgumentParser(description = 'CDNRECON - A Content Delivery Network recon tool')
@@ -54,7 +56,10 @@ AKAMAI           = []  # Akamai IP addresses get stored in this list
 
 # Initialize colorama
 
-COLORAMA_INIT(convert=True)
+if os.name == 'nt':
+    COLORAMA_INIT(convert=True)
+else:
+    COLORAMA_INIT()
 
 # Start of user-agent string list
 
@@ -120,14 +125,74 @@ def DNSDUMPSTER():
                 RESULT_DOMAIN = RESULT['domain']
 
                 try:
-                    print(f"{Fore.CYAN}[+] {Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL} seems to be valid")
+                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL} seems to be valid")
                     VALID_SUBDOMAINS.append(RESULT_DOMAIN)
 
-                except:
+                except Exception:
                     pass
 
         except Exception as e:
                 print(f"{e}")
+
+def CERTIFICATE_SEARCH(): # Idea by me and original code by my good friend @R00tendo
+        
+        CRT_AGENT = random.choice(USER_AGENT_STRINGS)
+
+        HEADERS = {
+
+        'User-Agent': CRT_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://crt.sh/',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Sec-GPC': '1',
+        'Cache-Control': 'max-age=0',
+
+        }
+
+        PARAMS= {
+
+        'q': TARGET_DOMAIN,
+
+        }
+        
+        SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        RESULT = SOCK.connect_ex((TARGET_DOMAIN,443))
+
+        if RESULT != 0:
+            return f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} doesn't seem to be using HTTPS, skipping certificate search"
+
+        try:
+            
+            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Getting subdomains from {Fore.MAGENTA}{TARGET_DOMAIN}'s{Style.RESET_ALL} SSL certificate . . .")
+            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} This might take a while, hang tight")
+
+            RESPONSE = requests.get('https://crt.sh/', params=PARAMS, headers=HEADERS)
+            STATUS_CODE = RESPONSE.status_code
+
+            if STATUS_CODE != 200:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
+
+            else:
+                FOUND = []
+                SOUP = BeautifulSoup(RESPONSE.text, 'html.parser')
+                TABLES = SOUP.find_all('table')
+
+                for TABLE in TABLES:
+                    for DOMAIN in TABLE.find_all('td'):
+                        for DM in DOMAIN:
+                            if TARGET_DOMAIN in DM and " " not in DM and DM not in VALID_SUBDOMAINS:
+                                    print((f"{Fore.CYAN}[+]{Style.RESET_ALL} found {Fore.BLUE}{DM}{Style.RESET_ALL} from the SSL certificate"))
+                                    VALID_SUBDOMAINS.append(DM)
+
+        except requests.exceptions.ConnectionError:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
 def SUB_ENUM():
 
@@ -183,7 +248,7 @@ def SUB_IP():
                 IP_ADDRESSES.append(SUBDOMAIN_IP)
 
      except socket.gaierror as ge:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Temporary failure in name resolution")
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Can't resolve {Fore.BLUE}{SUBDOMAIN}{Style.RESET_ALL}'s IP address")
             sys.exit()
 
 def IS_CF_IP():
@@ -201,6 +266,27 @@ def IS_CF_IP():
             try:
                 HEAD = requests.head(f"http://{IP}", headers=IS_CF_AGENT, timeout=5)
                 HEADERS = HEAD.headers
+
+                global IP_COUNTRY
+
+                IP_COUNTRY = requests.get(f"http://ip-api.com/csv/{IP}?fields=country").text.strip()
+                
+                if 'CF-ray' in HEADERS is not None:
+
+                    CLOUDFLARE = True
+
+                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} is Cloudflare")
+                    RAY_ID = HEAD.headers['CF-ray']
+                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Ray-ID: {Fore.CYAN}{RAY_ID}{Style.RESET_ALL}")
+                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
+
+                if 'CF-ray' not in HEADERS:
+                    print(f"{Fore.GREEN}[!]{Style.RESET_ALL} {Fore.RED}{IP}{Style.RESET_ALL} is NOT cloudflare")
+
+                    if IP in NOT_CLOUDFLARE is not None:
+                        pass
+                    else:
+                        NOT_CLOUDFLARE.append(IP)
             
             except ConnectionError:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} Couldn't connect to {Fore.BLUE}{IP}{Style.RESET_ALL}, skipping . . .")
@@ -211,29 +297,8 @@ def IS_CF_IP():
             except ConnectionRefusedError:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
 
-            except:
+            except Exception:
                 pass
-
-            global IP_COUNTRY
-
-            IP_COUNTRY = requests.get(f"http://ip-api.com/csv/{IP}?fields=country").text.strip()
-            
-            if 'CF-ray' in HEADERS is not None:
-
-                CLOUDFLARE = True
-
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} is Cloudflare")
-                RAY_ID = HEAD.headers['CF-ray']
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Ray-ID: {Fore.CYAN}{RAY_ID}{Style.RESET_ALL}")
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
-
-            if 'CF-ray' not in HEADERS:
-                print(f"{Fore.GREEN}[!]{Style.RESET_ALL} {Fore.RED}{IP}{Style.RESET_ALL} is NOT cloudflare")
-
-                if IP in NOT_CLOUDFLARE is not None:
-                    pass
-                else:
-                    NOT_CLOUDFLARE.append(IP)
 
 def IS_AKAMAI():
 
@@ -252,7 +317,33 @@ def IS_AKAMAI():
         try:
             HEAD = requests.head(f"http://{IP}", headers=AKAMAI_USER_AGENT)
             HEADERS = HEAD.headers
+
+            if 'x-akamai' in HEADERS is not None:
+
+                IS_AKAMAI = True
+
+                AKAMAI.append(IP)
+
+                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} is Akamai")
+                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
         
+            if 'Server' in HEADERS is not None:
+                
+                SERVER = HEADERS['Server']
+
+                if 'AkamaiGHost' in SERVER is not None:
+
+                        IS_AKAMAI = True
+
+                        AKAMAI.append(IP)
+
+                        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} Server detected as {Fore.GREEN}AkamaiGHost{Style.RESET_ALL}")
+                        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
+            
+            if IS_AKAMAI == False:
+
+                print(f"{Fore.GREEN}[!]{Style.RESET_ALL} {Fore.RED}{IP}{Style.RESET_ALL} is NOT Akamai")
+            
         except ConnectionError:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Couldn't connect to {Fore.BLUE}{IP}{Style.RESET_ALL}, skipping . . .")
 
@@ -262,34 +353,8 @@ def IS_AKAMAI():
         except ConnectionRefusedError:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
         
-        except:
+        except Exception:
             pass
-
-        if 'x-akamai' in HEADERS is not None:
-
-                IS_AKAMAI = True
-
-                AKAMAI.append(IP)
-
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} is Akamai")
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
-        
-        if 'Server' in HEADERS is not None:
-            
-            SERVER = HEADERS['Server']
-
-            if 'AkamaiGHost' in SERVER is not None:
-
-                    IS_AKAMAI = True
-
-                    AKAMAI.append(IP)
-
-                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.CYAN}{IP}{Style.RESET_ALL} Server detected as {Fore.GREEN}AkamaiGHost{Style.RESET_ALL}")
-                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Country: {IP_COUNTRY}")
-        
-        if IS_AKAMAI == False:
-
-            print(f"{Fore.GREEN}[!]{Style.RESET_ALL} {Fore.RED}{IP}{Style.RESET_ALL} is NOT Akamai")
 
 def SHODAN_LOOKUP():
 
@@ -367,6 +432,7 @@ def MAIN():
 
             IS_POINTING_TO_CF()
             THREAD(DNSDUMPSTER)
+            THREAD(CERTIFICATE_SEARCH)
             THREAD(SUB_ENUM)
             THREAD(SUB_IP)
             THREAD(IS_CF_IP)
