@@ -41,6 +41,18 @@ Shodan API keys are NOT required. Altough it's recommended to supply them for ma
 [+] support.cloudflare.com has an IP address of 104.18.39.119
 ==================================================
 ````
+<b>Getting subdomains from the target domains SSL certificate</b>
+````
+[i] Getting subdomains from juuso.computer's SSL certificate . . .
+[i] This might take a while, hang tight
+[+] found *.juuso.computer from the SSL certificate
+[+] found www.juuso.computer from the SSL certificate
+````
+<b>Dumping DNS recods with DNSDumpster</b>
+````
+[i] DNSDumpster output for juuso.computer
+[+] juuso.computer seems to be valid
+````
  <b>Checking if the IP addresses belong to Cloudflare</b>
 ````
 ==================================================
@@ -128,7 +140,7 @@ options:
 ## To do
 - Add more CDNs
 - Add Censys support
-- Add certificate search
+- Add certificate search [ DONE ]
 - Add IPv4 range bruteforcer
 - Add favicon hash search
 - Add html body hash search
