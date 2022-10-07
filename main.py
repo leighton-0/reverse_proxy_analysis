@@ -7,7 +7,7 @@
 # Created by @Juuso1337
 # This program tries to find the origin IP address of a website protected by a reverse proxy
 # Download the latest version from github.com/juuso1337/CDNRECON
-# Version 0.9.5
+# Version 1.0.0
 
 ############################################ All libraries required by this program
 import sys                                            #
@@ -180,7 +180,6 @@ def CERTIFICATE_SEARCH(): # Idea by me and original code by my good friend @R00t
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
             else:
-                FOUND = []
                 SOUP = BeautifulSoup(RESPONSE.text, 'html.parser')
                 TABLES = SOUP.find_all('table')
 
