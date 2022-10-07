@@ -3,3 +3,5 @@ pyfiglet
 requests
 shodan
 colorama
+re
+bs4
