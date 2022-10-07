@@ -5,6 +5,7 @@
 <b>The things CDNRECON does:
 - Checks the target domain nameservers
 - Dumps DNS records with DNSDumpster
+- Gets subdomains from the target domains SSL certificate
 - Checks common subdomains and gets their IP addresses
 - Checks if any of the IP addresses belong to Cloudflare
 - Checks if any of the IP addresses belong to Akamai
@@ -39,6 +40,18 @@ Shodan API keys are NOT required. Altough it's recommended to supply them for ma
 [+] blog.cloudflare.com has an IP address of 172.64.146.82
 [+] support.cloudflare.com has an IP address of 104.18.39.119
 ==================================================
+````
+<b>Getting subdomains from the target domains SSL certificate</b>
+````
+[i] Getting subdomains from juuso.computer's SSL certificate . . .
+[i] This might take a while, hang tight
+[+] found *.juuso.computer from the SSL certificate
+[+] found www.juuso.computer from the SSL certificate
+````
+<b>Dumping DNS records with DNSDumpster</b>
+````
+[i] DNSDumpster output for juuso.computer
+[+] juuso.computer seems to be valid
 ````
  <b>Checking if the IP addresses belong to Cloudflare</b>
 ````
@@ -127,7 +140,7 @@ options:
 ## To do
 - Add more CDNs
 - Add Censys support
-- Add certificate search
+- Add certificate search [ DONE ]
 - Add IPv4 range bruteforcer
 - Add favicon hash search
 - Add html body hash search
