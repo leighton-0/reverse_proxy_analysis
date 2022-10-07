@@ -5,6 +5,7 @@
 <b>The things CDNRECON does:
 - Checks the target domain nameservers
 - Dumps DNS records with DNSDumpster
+- Gets subdomains from the target domains SSL certificate
 - Checks common subdomains and gets their IP addresses
 - Checks if any of the IP addresses belong to Cloudflare
 - Checks if any of the IP addresses belong to Akamai
