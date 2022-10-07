@@ -122,9 +122,6 @@ def SUB_ENUM():
     print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking common subdomains . . .")
 
     for SUBDOMAIN in SUBDOMAINS:
-        
-        if SUBDOMAIN in VALID_SUBDOMAINS is not None:
-            pass
 
         URL = f'http://{SUBDOMAIN}.{TARGET_DOMAIN}'      # Requests needs a valid HTTP(s) schema
 
