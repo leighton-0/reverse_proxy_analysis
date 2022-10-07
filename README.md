@@ -6,7 +6,7 @@
 - Checks the target domain nameservers
 - Dumps DNS records with DNSDumpster
 - Gets subdomains from the target domains SSL certificate
-- Gets subdomains from SecurityTrails API
+- Gets subdomains with SecurityTrails API
 - Checks common subdomains and gets their IP addresses
 - Checks if any of the IP addresses belong to Cloudflare
 - Checks if any of the IP addresses belong to Akamai
