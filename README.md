@@ -6,6 +6,7 @@
 - Checks the target domain nameservers
 - Dumps DNS records with DNSDumpster
 - Gets subdomains from the target domains SSL certificate
+- Gets subdomains from SecurityTrails API
 - Checks common subdomains and gets their IP addresses
 - Checks if any of the IP addresses belong to Cloudflare
 - Checks if any of the IP addresses belong to Akamai
@@ -13,7 +14,7 @@
 - Optionally returns data from Shodan for possibly leaked IP addresses
 - Optionally writes the results to target.com-results.txt file
 
-Shodan API keys are NOT required. Altough it's recommended to supply them for maximum output, CDNRECON tries other things before using them.
+Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to supply them for maximum output, CDNRECON tries other things before using them.
 
  <b>Checking the nameservers, common subdomains and their IP addresses</b>
  ```
@@ -115,7 +116,11 @@ $ pip3 install -r requirements.txt
 <b>Sample usage guide
 
 ```
-$ python3 main.py example.com shodan-key
+$ nano config
+$ put shodan=API-KEY-HERE on line 1
+$ put securitytrails=API-KEY-HERE on line 2
+$ CTRL + X to save
+$ python3 main.py example.com -c config
 ```
 <b> For more in-depth usage info, supply the -h flag (python3 main.py -h).</b>
 ````
@@ -135,8 +140,13 @@ options:
 ## How to get a Shodan API key
 <b>1. Register an account at https://account.shodan.io/ (it's totally free).<br>
 <b>2. Head over the to the "Account" page and see the "API key" field.<br>
-  <img src="https://a.pomf.cat/nvdiap.png"></img>
-  
+<img src="https://a.pomf.cat/nvdiap.png"></img>
+
+## How to get a SecurityTrails API key
+<b>1. Register an account at https://securitytrails.com/app/signup (it's totally free).<br>
+<b>2. Head over to your account page and see the "API keys" section.<br><br>
+<img src="https://a.pomf.cat/phbfgo.png"></img>
+
 ## To do
 - Add more CDNs
 - Add Censys support
