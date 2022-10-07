@@ -48,7 +48,7 @@ Shodan API keys are NOT required. Altough it's recommended to supply them for ma
 [+] found *.juuso.computer from the SSL certificate
 [+] found www.juuso.computer from the SSL certificate
 ````
-<b>Dumping DNS recods with DNSDumpster</b>
+<b>Dumping DNS records with DNSDumpster</b>
 ````
 [i] DNSDumpster output for juuso.computer
 [+] juuso.computer seems to be valid
