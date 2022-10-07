@@ -153,6 +153,9 @@ def SUB_ENUM():
         except requests.exceptions.Timeout:
             pass
 
+        except ConnectionRefusedError:
+            pass
+
         else:
             FINAL_URL = URL.replace("http://", "")       # (?) socket.gethostbyname doesn't like "http://"
 
@@ -204,6 +207,9 @@ def IS_CF_IP():
             
             except requests.exceptions.ConnectTimeout:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} timed out, skipping . . .")
+            
+            except ConnectionRefusedError:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
 
             global IP_COUNTRY
 
@@ -250,6 +256,9 @@ def IS_AKAMAI():
         except requests.exceptions.ConnectTimeout:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} timed out, skipping . . .")
 
+        except ConnectionRefusedError:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
+
         if 'x-akamai' in HEADERS is not None:
 
                 IS_AKAMAI = True
@@ -275,25 +284,6 @@ def IS_AKAMAI():
         if IS_AKAMAI == False:
 
             print(f"{Fore.GREEN}[!]{Style.RESET_ALL} {Fore.RED}{IP}{Style.RESET_ALL} is NOT Akamai")
-
-def CHECK_TLDS():
-
-    HEAD, SEP, TAIL = TARGET_DOMAIN.partition('.')
-
-    for TLD in TLDS:
-
-        URL = f"http://{HEAD}.{TLD}"
-
-        try:
-            NEW_DOM = requests.get(URL)
-
-        except requests.ConnectionError:
-            pass
-
-        else:
-            FINAL_URL = URL.replace("http://", "")
-            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Possible TLD found: {Fore.BLUE}{FINAL_URL}{Style.RESET_ALL}")
-
 
 def SHODAN_LOOKUP():
 
