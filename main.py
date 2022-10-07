@@ -211,6 +211,9 @@ def IS_CF_IP():
             except ConnectionRefusedError:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
 
+            except:
+                pass
+
             global IP_COUNTRY
 
             IP_COUNTRY = requests.get(f"http://ip-api.com/csv/{IP}?fields=country").text.strip()
@@ -258,6 +261,9 @@ def IS_AKAMAI():
 
         except ConnectionRefusedError:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
+        
+        except:
+            pass
 
         if 'x-akamai' in HEADERS is not None:
 
