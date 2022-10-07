@@ -4,55 +4,69 @@
 # / /___/ /_/ / /|  / _, _/ /___/ /___/ /_/ / /|  /  
 # \____/_____/_/ |_/_/ |_/_____/\____/\____/_/ |_/   
 #                                                     
-# Created by @Juuso1337
+# Main codebase by @Juuso1337, now in collaboration with @R00tendo
 # This program tries to find the origin IP address of a website protected by a reverse proxy
 # Download the latest version from github.com/juuso1337/CDNRECON
 # Version 1.0.0
 
-############################################ All libraries required by this program
-import sys                                            #
-import os                                             #
-if os.name == 'nt':                                   #
-    WIN = True                                        #                                              
-else:                                                 #
-    WIN = False                                       #
-    import pydig                                      #
-from pyfiglet import Figlet                           # Render ASCII art
-import requests                                       # Simple HTTP library
-import socket                                         # Basic networking
-import threading                                      # Threads
-import argparse                                       # Parse commmand line arguments
-import shodan                                         # IoT search engine
-import time                                           # Time
-from lists import *                                   # Separate file containing arrays
-import random                                         # Random number generator
-from colorama import Fore, Style                      # Make ANSII color codes work on Windows
-from colorama import init as COLORAMA_INIT            # Colorama init
-from dnsdumpster.DNSDumpsterAPI import DNSDumpsterAPI # Finds subdomains
-from bs4 import BeautifulSoup                         # Soup, yummy
-import re                                             # Regex
-#######################################################
+################################################################# All libraries required by this program
+import sys                                                      #
+import os                                                       #
+if os.name == 'nt':                                             #
+    WIN = True                                                  #                                              
+else:                                                           #
+    WIN = False                                                 #
+    import pydig                                                #
+from pyfiglet import Figlet                                     # Render ASCII art
+import requests                                                 # Simple HTTP library
+import socket                                                   # Basic networking
+import threading                                                # Threads
+import argparse                                                 # Parse commmand line arguments
+import shodan                                                   # IoT search engine
+import time                                                     # Time
+from lists import *                                             # Separate file containing arrays
+import random                                                   # Random number generator
+from colorama import Fore, Style                                # Make ANSII color codes work on Windows
+from colorama import init as COLORAMA_INIT                      # Colorama init
+from dnsdumpster.DNSDumpsterAPI import DNSDumpsterAPI           # Finds subdomains
+from bs4 import BeautifulSoup                                   # Soup, yummy
+import re                                                       # Regex
+from pysecuritytrails import SecurityTrails, SecurityTrailsError# Securitytrails intelligence API
+#################################################################
+#--------------------------------------------------------------
 
 PARSER = argparse.ArgumentParser(description = 'CDNRECON - A Content Delivery Network recon tool')
 
 PARSER.add_argument('TARGET_DOMAIN', metavar ='domain', help ='Domain to scan')
-PARSER.add_argument('SHODAN_API_KEY', metavar ='shodan', help ='Your Shodan API key', nargs='?')
+PARSER.add_argument('-c', '--config', help ='Configurtation file (see github for syntax)')
 PARSER.add_argument('--write', action='store_true', help="Write results to a target.com-results.txt file")
 
 ARGS = PARSER.parse_args()
 
 ###################################### All command line arguments
 TARGET_DOMAIN  = ARGS.TARGET_DOMAIN  #
-SHODAN_API_KEY = ARGS.SHODAN_API_KEY #
 WRITE          = ARGS.write          #
 ######################################
+#-----------------------------------
 
 ######################## Some global variables
 VALID_SUBDOMAINS = []  # Valid subdomains get stored in this list
 IP_ADDRESSES     = []  # Subdomain IP addresses get stored in this list
 NOT_CLOUDFLARE   = []  # Non Cloudflare IP addresses get stored in this list
 AKAMAI           = []  # Akamai IP addresses get stored in this list
+class API_KEYS:        # Api keys that will be used to get for example subdomains
+    securitytrails=None#
+    shodan=None        #
 ########################
+#---------------------
+
+# Parses and loads API keys from a config file (specified with -c/--config)
+
+if ARGS.config != None:
+    for LINE in open(ARGS.config, 'r'):
+        LINE = LINE.strip()
+        if len(LINE.split("=")) == 2:
+            exec(f'API_KEYS.{LINE.split("=")[0]} = "{LINE.split("=")[1].strip()}"')
 
 # Initialize colorama
 
@@ -91,12 +105,10 @@ def IS_POINTING_TO_CF():
 
         else:
             print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} nameservers . . .")
-
             NS_RECORD = pydig.query(TARGET_DOMAIN, "NS")
 
-            if  'cloudflare' in str(NS_RECORD):
+            if 'cloudflare' in str(NS_RECORD):
                 print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is pointing to Cloudflares nameservers")
-
             else:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is not pointing to Cloudflares nameservers")
             
@@ -107,7 +119,6 @@ def DNSDUMPSTER():
     try:
         RESPONSE = requests.get("https://dnsdumpster.com", verify=True)
         STATUS_CODE = RESPONSE.status_code
-    
     except requests.exceptions.ConnectionError:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}dnsdumpster.com{Style.RESET_ALL} seems to be down, skipping . . .")
 
@@ -119,14 +130,15 @@ def DNSDUMPSTER():
 
         try:
             RESULTS = DNSDumpsterAPI().search(TARGET_DOMAIN)['dns_records']['host']
-
             for RESULT in RESULTS:
-
                 RESULT_DOMAIN = RESULT['domain']
-
                 try:
                     print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL} seems to be valid")
-                    VALID_SUBDOMAINS.append(RESULT_DOMAIN)
+
+                    if RESULT_DOMAIN in VALID_SUBDOMAINS is not None:
+                        pass
+                    else:
+                        VALID_SUBDOMAINS.append(RESULT_DOMAIN)
 
                 except Exception:
                     pass
@@ -134,7 +146,7 @@ def DNSDUMPSTER():
         except Exception as e:
                 print(f"{e}")
 
-def CERTIFICATE_SEARCH(): # Idea by me and original code by my good friend @R00tendo
+def CERTIFICATE_SEARCH():
         
         CRT_AGENT = random.choice(USER_AGENT_STRINGS)
 
@@ -193,14 +205,31 @@ def CERTIFICATE_SEARCH(): # Idea by me and original code by my good friend @R00t
         except requests.exceptions.ConnectionError:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
+def SECURITYTRAILS_GET_SUBDOMAINS():
+    print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} SecurityTrails API subdomain scan output for: {Fore.BLUE}{TARGET_DOMAIN}{Style.RESET_ALL}")
+    ST = SecurityTrails(API_KEYS.securitytrails)
+    try:
+        ST.ping()
+    except SecurityTrailsError:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Invalid API key")
+        exit()   
+
+    SUBDOMAINS_ST = ST.domain_subdomains(TARGET_DOMAIN)
+    for SUBDOMAIN in SUBDOMAINS_ST['subdomains']:
+        RESULT_DOMAIN = f"{SUBDOMAIN.strip()}.{TARGET_DOMAIN}"
+        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL}")
+
+        if SUBDOMAIN in VALID_SUBDOMAINS is not None:
+            pass
+        else:
+            VALID_SUBDOMAINS.append(RESULT_DOMAIN)
+
 def SUB_ENUM():
 
     print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking common subdomains . . .")
 
     for SUBDOMAIN in SUBDOMAINS:
-
         URL = f'http://{SUBDOMAIN}.{TARGET_DOMAIN}'      # Requests needs a valid HTTP(s) schema
-
         AGENT = random.choice(USER_AGENT_STRINGS)
 
         SUB_ENUM_AGENT = {
@@ -210,19 +239,15 @@ def SUB_ENUM():
 
         try:
             requests.get(URL, headers=SUB_ENUM_AGENT, timeout=5)
-
         except requests.ConnectionError:
             pass
-        
         except requests.exceptions.Timeout:
             pass
-
         except ConnectionRefusedError:
             pass
 
         else:
             FINAL_URL = URL.replace("http://", "")       # (?) socket.gethostbyname doesn't like "http://"
-
             print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{FINAL_URL}{Style.RESET_ALL} is a valid domain")
 
             if SUBDOMAIN in VALID_SUBDOMAINS is not None:
@@ -231,31 +256,25 @@ def SUB_ENUM():
                 VALID_SUBDOMAINS.append(FINAL_URL)
 
 def SUB_IP():
-
-     try:
-
         print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Getting subdomain IP addresses . . .")
 
         for SUBDOMAIN in VALID_SUBDOMAINS:
-
-            SUBDOMAIN_IP = socket.gethostbyname(SUBDOMAIN)
-            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{SUBDOMAIN}{Style.RESET_ALL} has an IP address of {Fore.BLUE}{SUBDOMAIN_IP}{Style.RESET_ALL}")
-
-            if SUBDOMAIN_IP in IP_ADDRESSES is not None:
-                pass
+            try:
+                SUBDOMAIN_IP = socket.gethostbyname(SUBDOMAIN)
+            except socket.gaierror:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Can't resolve {Fore.BLUE}{SUBDOMAIN}{Style.RESET_ALL}'s IP address")
             else:
-                IP_ADDRESSES.append(SUBDOMAIN_IP)
+                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{SUBDOMAIN}{Style.RESET_ALL} has an IP address of {Fore.BLUE}{SUBDOMAIN_IP}{Style.RESET_ALL}")
 
-     except socket.gaierror as ge:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Can't resolve {Fore.BLUE}{SUBDOMAIN}{Style.RESET_ALL}'s IP address")
-            sys.exit()
+                if SUBDOMAIN_IP in IP_ADDRESSES is not None:
+                    pass
+                else:
+                    IP_ADDRESSES.append(SUBDOMAIN_IP)
 
 def IS_CF_IP():
 
     for IP in IP_ADDRESSES:
-
             print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking if {Fore.BLUE}{IP}{Style.RESET_ALL} is Cloudflare . . .")
-
             AGENT = random.choice(USER_AGENT_STRINGS)
 
             IS_CF_AGENT = {
@@ -267,7 +286,6 @@ def IS_CF_IP():
                 HEADERS = HEAD.headers
 
                 global IP_COUNTRY
-
                 IP_COUNTRY = requests.get(f"http://ip-api.com/csv/{IP}?fields=country").text.strip()
                 
                 if 'CF-ray' in HEADERS is not None:
@@ -288,14 +306,11 @@ def IS_CF_IP():
                         NOT_CLOUDFLARE.append(IP)
             
             except ConnectionError:
-                print(f"{Fore.RED}[-]{Style.RESET_ALL} Couldn't connect to {Fore.BLUE}{IP}{Style.RESET_ALL}, skipping . . .")
-            
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Couldn't connect to {Fore.BLUE}{IP}{Style.RESET_ALL}, skipping . . .")   
             except requests.exceptions.ConnectTimeout:
-                print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} timed out, skipping . . .")
-            
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} timed out, skipping . . .")        
             except ConnectionRefusedError:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
-
             except Exception:
                 pass
 
@@ -304,11 +319,9 @@ def IS_AKAMAI():
     IS_AKAMAI = False
 
     for IP in NOT_CLOUDFLARE:
-
         print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking if {Fore.BLUE}{IP}{Style.RESET_ALL} is Akamai . . .")
-
         IS_AKAMAI_AGENT = random.choice(USER_AGENT_STRINGS)
-        
+
         AKAMAI_USER_AGENT = {
             'User-Agent': IS_AKAMAI_AGENT
         }
@@ -345,13 +358,10 @@ def IS_AKAMAI():
             
         except ConnectionError:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Couldn't connect to {Fore.BLUE}{IP}{Style.RESET_ALL}, skipping . . .")
-
         except requests.exceptions.ConnectTimeout:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} timed out, skipping . . .")
-
         except ConnectionRefusedError:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .")
-        
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Connection to {Fore.BLUE}{IP}{Style.RESET_ALL} refused, skipping . . .") 
         except Exception:
             pass
 
@@ -362,10 +372,9 @@ def SHODAN_LOOKUP():
         sys.exit()
 
     try:
-        API = shodan.Shodan(SHODAN_API_KEY)
+        API = shodan.Shodan(API_KEYS.shodan)
 
         for IP in NOT_CLOUDFLARE:
-
             print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Shodan results for {Fore.BLUE}{IP}{Style.RESET_ALL}")
 
             RESULTS = API.host(IP)
@@ -430,13 +439,21 @@ def MAIN():
             print (f"{Fore.YELLOW}{ASCII_RENDER}")
 
             IS_POINTING_TO_CF()
+
             THREAD(DNSDUMPSTER)
             THREAD(CERTIFICATE_SEARCH)
             THREAD(SUB_ENUM)
+
+            if API_KEYS.securitytrails != None:
+                THREAD(SECURITYTRAILS_GET_SUBDOMAINS)
+
             THREAD(SUB_IP)
             THREAD(IS_CF_IP)
             THREAD(IS_AKAMAI)
-            THREAD(SHODAN_LOOKUP)
+
+            if API_KEYS.shodan:
+                THREAD(SHODAN_LOOKUP)
+        
     
             if WRITE == True:
 

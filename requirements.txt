@@ -5,3 +5,4 @@ shodan
 colorama
 re
 bs4
+pysecuritytrails
