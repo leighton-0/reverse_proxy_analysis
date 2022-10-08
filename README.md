@@ -24,21 +24,25 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 \____/_____/_/ |_/_/ |_/_____/\____/\____/_/ |_/   
                                                    
 
-[i] Checking cloudflare.com nameservers . . .
-[+] cloudflare.com is pointing to Cloudflares nameservers
-[+] Nameservers: ['ns3.cloudflare.com.', 'ns7.cloudflare.com.', 'ns4.cloudflare.com.', 'ns5.cloudflare.com.', 'ns6.cloudflare.com.']
+[i] Checking juuso.computer nameservers . . .
+[+] Nameservers: jimmy.ns.cloudflare.com, lorna.ns.cloudflare.com
+[+] juuso.computer is pointing to Cloudflares nameservers
+==================================================
+[i] DNSDumpster output for juuso.computer
+[+] juuso.computer seems to be valid
+==================================================
+[i] Getting subdomains from juuso.computer's SSL certificate . . .
+[i] This might take a while, hang tight
+[+] found *.juuso.computer from the SSL certificate
+[+] found www.juuso.computer from the SSL certificate
 ==================================================
 [i] Checking common subdomains . . .
-[+] www.cloudflare.com is a valid domain
-[+] mail.cloudflare.com is a valid domain
-[+] blog.cloudflare.com is a valid domain
-[+] support.cloudflare.com is a valid domain
-==================================================
+[+] www.juuso.computer is a valid domain                     
+==================================================    
 [i] Getting subdomain IP addresses . . .
-[+] www.cloudflare.com has an IP address of 104.16.124.96
-[+] mail.cloudflare.com has an IP address of 216.58.210.147
-[+] blog.cloudflare.com has an IP address of 172.64.146.82
-[+] support.cloudflare.com has an IP address of 104.18.39.119
+[+] juuso.computer has an IP address of 104.21.75.196
+[-] Can't resolve *.juuso.computer's IP address
+[+] www.juuso.computer has an IP address of 172.67.180.230
 ==================================================
 ````
 <b>Getting subdomains from the target domains SSL certificate</b>
@@ -116,24 +120,37 @@ $ pip3 install -r requirements.txt
 
 ```
 $ nano config
-$ put shodan=API-KEY-HERE on line 1
-$ put securitytrails=API-KEY-HERE on line 2
+$ write shodan=API-KEY-HERE
+$ write securitytrails=API-KEY-HERE
 $ CTRL + X to save
 $ python3 main.py example.com -c config
 ```
+
 <b> For more in-depth usage info, supply the -h flag (python3 main.py -h).</b>
 ````
-usage: main.py [-h] [--write] domain [shodan]
+   __________  _   ______  ________________  _   __
+  / ____/ __ \/ | / / __ \/ ____/ ____/ __ \/ | / /
+ / /   / / / /  |/ / /_/ / __/ / /   / / / /  |/ / 
+/ /___/ /_/ / /|  / _, _/ /___/ /___/ /_/ / /|  /  
+\____/_____/_/ |_/_/ |_/_____/\____/\____/_/ |_/   
+                                                   
+
+usage: main.py [-h] [-c CONFIG] [-t THREADS] [-o OUTPUT] domain
 
 CDNRECON - A Content Delivery Network recon tool
 
 positional arguments:
-  domain      Domain to scan
-  shodan      Your Shodan API key
+  domain                Domain to scan
 
-options:
-  -h, --help  show this help message and exit
-  --write     Write results to a target.com-results.txt file
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        Configurtation file (see github for syntax)
+  -t THREADS, --threads THREADS
+                        Max threads the program will use.
+  -o OUTPUT, --output OUTPUT
+                        Write results to the specified file
+
 ````
 
 ## How to get a Shodan API key
