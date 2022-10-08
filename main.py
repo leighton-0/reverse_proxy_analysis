@@ -24,7 +24,6 @@ import threading                                                # Threads
 import argparse                                                 # Parse commmand line arguments
 import shodan                                                   # IoT search engine
 import time                                                     # Time
-from lists import *                                             # Separate file containing arrays
 import random                                                   # Random number generator
 from colorama import Fore, Style                                # Make ANSII color codes work on Windows
 from colorama import init as COLORAMA_INIT                      # Colorama init
@@ -35,29 +34,37 @@ from pysecuritytrails import SecurityTrails, SecurityTrailsError# Securitytrails
 #################################################################
 #--------------------------------------------------------------
 
+#Print logo
+ASCII = Figlet(font='slant', width=100)
+ASCII_RENDER = ASCII.renderText("CDNRECON")
+print (f"{Fore.YELLOW}{ASCII_RENDER}{Style.RESET_ALL}")
+
 PARSER = argparse.ArgumentParser(description = 'CDNRECON - A Content Delivery Network recon tool')
 
 PARSER.add_argument('TARGET_DOMAIN', metavar ='domain', help ='Domain to scan')
 PARSER.add_argument('-c', '--config', help ='Configurtation file (see github for syntax)')
-PARSER.add_argument('--write', action='store_true', help="Write results to a target.com-results.txt file")
+PARSER.add_argument('-t', '--threads', help='Max threads the program will use.', default='20')
+PARSER.add_argument('-o', '--output', help="Write results to the specified file", default=None)
 
 ARGS = PARSER.parse_args()
 
 ###################################### All command line arguments
 TARGET_DOMAIN  = ARGS.TARGET_DOMAIN  #
-WRITE          = ARGS.write          #
 ######################################
 #-----------------------------------
 
-######################## Some global variables
-VALID_SUBDOMAINS = []  # Valid subdomains get stored in this list
-IP_ADDRESSES     = []  # Subdomain IP addresses get stored in this list
-NOT_CLOUDFLARE   = []  # Non Cloudflare IP addresses get stored in this list
-AKAMAI           = []  # Akamai IP addresses get stored in this list
-class API_KEYS:        # Api keys that will be used to get for example subdomains
-    securitytrails=None#
-    shodan=None        #
-########################
+############################################################# Some global variables
+VALID_SUBDOMAINS = []                                       # Valid subdomains get stored in this list
+IP_ADDRESSES     = []                                       # Subdomain IP addresses get stored in this list
+NOT_CLOUDFLARE   = []                                       # Non Cloudflare IP addresses get stored in this list
+AKAMAI           = []                                       # Akamai IP addresses get stored in this list
+class API_KEYS:                                             # Api keys that will be used to get for example subdomains
+    securitytrails=None                                     #
+    shodan=None                                             #
+DIRECTORY_PATH  = os.path.dirname(os.path.abspath(__file__))# Absolute path to the app directory
+GLOBAL_THREADS = int(ARGS.threads)                          # Max threads the program will use
+RUNNING_THREADS = 0                                         # Keeps count of threads running simultaneously
+#############################################################
 #---------------------
 
 # Parses and loads API keys from a config file (specified with -c/--config)
@@ -75,24 +82,12 @@ if os.name == 'nt':
 else:
     COLORAMA_INIT()
 
-# Start of user-agent string list
-
-USER_AGENT_STRINGS = [
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/37.0.2062.94 Chrome/37.0.2062.94 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/600.8.9 (KHTML, like Gecko) Version/8.0.8 Safari/600.8.9",
-    "Mozilla/5.0 (iPad; CPU OS 7_1_2 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) GSA/6.0.51363 Mobile/11D257 Safari/9537.53",
-    "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.152 Safari/537.36 LBBROWSER",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:37.0) Gecko/20100101 Firefox/37.0",
-    "Mozilla/5.0 (Windows NT 6.2; ARM; Trident/7.0; Touch; rv:11.0; WPDesktop; Lumia 1520) like Gecko",
-    "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.65 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:42.0) Gecko/20100101 Firefox/42.0",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_6 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B651 Safari/9537.53"
-]
-
-# End of user-agent string list
+# Start of load wordlists into memory
+USER_AGENT_STRINGS = open(f"{DIRECTORY_PATH}/wordlists/User-Agents").read().split("\n")
+USER_AGENT_STRINGS = [x for x in USER_AGENT_STRINGS if x != '']
+SUBDOMAINS = open(f"{DIRECTORY_PATH}/wordlists/Subdomains").read().split("\n")
+SUBDOMAINS = [x for x in SUBDOMAINS if x != '']
+# End of load wordlists into memory
 
 ##############################
 #      Define functions      #
@@ -107,12 +102,14 @@ def IS_POINTING_TO_CF():
             print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} nameservers . . .")
             NS_RECORD = pydig.query(TARGET_DOMAIN, "NS")
 
+            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Nameservers: {Fore.MAGENTA}{', '.join(NS_RECORD).replace('., ', ', ')[:-1]}{Style.RESET_ALL}")
+
             if 'cloudflare' in str(NS_RECORD):
                 print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is pointing to Cloudflares nameservers")
             else:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is not pointing to Cloudflares nameservers")
-            
-            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Nameservers: {Fore.MAGENTA}{', '.join(NS_RECORD).replace('., ', ', ')[:-1]}{Style.RESET_ALL}")
+                sys.exit()
+                
 
 def DNSDUMPSTER():
 
@@ -134,11 +131,7 @@ def DNSDUMPSTER():
                 RESULT_DOMAIN = RESULT['domain']
                 try:
                     print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL} seems to be valid")
-
-                    if RESULT_DOMAIN in VALID_SUBDOMAINS is not None:
-                        pass
-                    else:
-                        VALID_SUBDOMAINS.append(RESULT_DOMAIN)
+                    VALID_SUBDOMAINS.append(RESULT_DOMAIN)
 
                 except Exception:
                     pass
@@ -198,7 +191,7 @@ def CERTIFICATE_SEARCH():
                 for TABLE in TABLES:
                     for DOMAIN in TABLE.find_all('td'):
                         for DM in DOMAIN:
-                            if TARGET_DOMAIN in DM and " " not in DM and DM not in VALID_SUBDOMAINS:
+                            if TARGET_DOMAIN in DM and " " not in DM and DM and DM not in VALID_SUBDOMAINS:
                                     print((f"{Fore.CYAN}[+]{Style.RESET_ALL} found {Fore.BLUE}{DM}{Style.RESET_ALL} from the SSL certificate"))
                                     VALID_SUBDOMAINS.append(DM)
 
@@ -218,17 +211,33 @@ def SECURITYTRAILS_GET_SUBDOMAINS():
     for SUBDOMAIN in SUBDOMAINS_ST['subdomains']:
         RESULT_DOMAIN = f"{SUBDOMAIN.strip()}.{TARGET_DOMAIN}"
         print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL}")
+        VALID_SUBDOMAINS.append(RESULT_DOMAIN)
 
-        if SUBDOMAIN in VALID_SUBDOMAINS is not None:
-            pass
-        else:
-            VALID_SUBDOMAINS.append(RESULT_DOMAIN)
+def SUB_ENUM_THREAD(URL,SUB_ENUM_AGENT):
+    global RUNNING_THREADS
+    try:
+        requests.get(URL, headers=SUB_ENUM_AGENT, timeout=5)
+
+    except requests.ConnectionError:
+        pass
+    except requests.exceptions.Timeout:
+        pass
+    except ConnectionRefusedError:
+        pass
+
+    else:
+        FINAL_URL = URL.replace("http://", "")       # (?) socket.gethostbyname doesn't like "http://"
+        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{FINAL_URL}{Style.RESET_ALL} is a valid domain {' ' * 20}")
+        VALID_SUBDOMAINS.append(FINAL_URL)
+    RUNNING_THREADS -= 1
 
 def SUB_ENUM():
-
+    global RUNNING_THREADS
+    RUNNING_THREADS = 0
     print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking common subdomains . . .")
 
-    for SUBDOMAIN in SUBDOMAINS:
+    for SUBDOMAIN_COUNT, SUBDOMAIN in enumerate(SUBDOMAINS):
+        print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking: {SUBDOMAIN}   {SUBDOMAIN_COUNT}/{len(SUBDOMAINS)}{' ' * 20}", end="\r")
         URL = f'http://{SUBDOMAIN}.{TARGET_DOMAIN}'      # Requests needs a valid HTTP(s) schema
         AGENT = random.choice(USER_AGENT_STRINGS)
 
@@ -237,23 +246,14 @@ def SUB_ENUM():
             'User-Agent': AGENT,
         }
 
-        try:
-            requests.get(URL, headers=SUB_ENUM_AGENT, timeout=5)
-        except requests.ConnectionError:
-            pass
-        except requests.exceptions.Timeout:
-            pass
-        except ConnectionRefusedError:
-            pass
+        while RUNNING_THREADS >= GLOBAL_THREADS:
+            time.sleep(0.5)
+        threading.Thread(target=SUB_ENUM_THREAD, args=(URL,SUB_ENUM_AGENT,)).start()
+        RUNNING_THREADS += 1
+    while RUNNING_THREADS != 0:
+        time.sleep(0.1)
+        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Scan done! Waiting for threads to exit...", end="\r")
 
-        else:
-            FINAL_URL = URL.replace("http://", "")       # (?) socket.gethostbyname doesn't like "http://"
-            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{FINAL_URL}{Style.RESET_ALL} is a valid domain")
-
-            if SUBDOMAIN in VALID_SUBDOMAINS is not None:
-                pass
-            else:
-                VALID_SUBDOMAINS.append(FINAL_URL)
 
 def SUB_IP():
         print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Getting subdomain IP addresses . . .")
@@ -417,6 +417,14 @@ def SHODAN_LOOKUP():
     except shodan.APIError as api_error:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} No shodan API key supplied or the key is invalid")
 
+def REMOVE_DUPLICATES():
+    global VALID_SUBDOMAINS
+    VALID_SUBDOMAINS_TEMP = []
+    for SUBDOMAIN in VALID_SUBDOMAINS:
+        if SUBDOMAIN not in VALID_SUBDOMAINS_TEMP:
+            VALID_SUBDOMAINS_TEMP.append(SUBDOMAIN)
+    VALID_SUBDOMAINS = VALID_SUBDOMAINS_TEMP
+    #print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Duplicate subdomains removed")
 def SEPARATOR():
 
     print(f"{Fore.YELLOW}={Style.RESET_ALL}" * 50)
@@ -427,16 +435,13 @@ def THREAD(FUNCTION):
     THREAD = threading.Thread(target=FUNCTION)
     THREAD.start()
     THREAD.join()
-      
+    REMOVE_DUPLICATES()
+
 def MAIN():
 
         try:
 
             START_TIME = time.perf_counter()
-
-            ASCII = Figlet(font='slant', width=100)
-            ASCII_RENDER = ASCII.renderText("CDNRECON")
-            print (f"{Fore.YELLOW}{ASCII_RENDER}")
 
             IS_POINTING_TO_CF()
 
@@ -453,11 +458,11 @@ def MAIN():
 
             if API_KEYS.shodan:
                 THREAD(SHODAN_LOOKUP)
-        
-    
-            if WRITE == True:
 
-                with open(f"{TARGET_DOMAIN}-results.txt", "w") as FILE:
+            SEPARATOR()
+            if ARGS.output != None:
+
+                with open(ARGS.output, "w") as FILE:
 
                     for SUBDOMAIN in VALID_SUBDOMAINS:
                             FILE.write(f"VALID SUBDOMAIN: {SUBDOMAIN}\n")
@@ -465,7 +470,7 @@ def MAIN():
                     for IP in NOT_CLOUDFLARE:
                             FILE.write(f"LEAKED IP: {IP}\n")
                     
-                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Saved results in {Fore.BLUE}{TARGET_DOMAIN}-results.txt{Style.RESET_ALL}")
+                    print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Saved results in {Fore.BLUE}{ARGS.output}{Style.RESET_ALL}")
 
             PERF = (time.perf_counter() - START_TIME)
             TOOK = int(PERF)
@@ -475,8 +480,8 @@ def MAIN():
         except KeyboardInterrupt:
             print("[i] Keyboard interrupt detected, exiting...")
 
-        except Exception as e:
-            print(f"[-] Exception occured\n--> {e}")
+        except Exception as errno:
+            print(f"[-] Exception occured\n--> {errno}")
 
 if __name__ == "__main__":
         MAIN()
