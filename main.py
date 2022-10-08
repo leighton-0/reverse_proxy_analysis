@@ -7,7 +7,7 @@
 # Created by @Juuso1337 and @R00tendo
 # This program tries to find the origin IP address of a website protected by a reverse proxy
 # Download the latest version from github.com/juuso1337/CDNRECON
-# Version 1.2.1
+# Version 2.5.2
 
 ################################################################# All libraries required by this program
 import sys                                                      #
