@@ -123,7 +123,7 @@ def DNSDUMPSTER():
         print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}dnsdumpster.com{Style.RESET_ALL} seems to be down, skipping . . .")
 
     if STATUS_CODE != 200:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}dnsdumpster.com{Style.RESET_ALL} seems to be down, skipping . . .")
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}dnsdumpster.com{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
     
     else:
         print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} DNSDumpster output for {Fore.BLUE}{TARGET_DOMAIN}{Style.RESET_ALL}")
@@ -181,17 +181,19 @@ def CERTIFICATE_SEARCH():
             return f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} doesn't seem to be using HTTPS, skipping certificate search"
 
         try:
-            
-            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Getting subdomains from {Fore.MAGENTA}{TARGET_DOMAIN}'s{Style.RESET_ALL} SSL certificate . . .")
-            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} This might take a while, hang tight")
-
             RESPONSE = requests.get('https://crt.sh/', params=PARAMS, headers=HEADERS)
             STATUS_CODE = RESPONSE.status_code
+        except requests.exceptions.ConnectionError:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
             if STATUS_CODE != 200:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
             else:
+                
+                print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Getting subdomains from {Fore.MAGENTA}{TARGET_DOMAIN}'s{Style.RESET_ALL} SSL certificate . . .")
+                print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} This might take a while, hang tight")
+
                 SOUP = BeautifulSoup(RESPONSE.text, 'html.parser')
                 TABLES = SOUP.find_all('table')
 
@@ -202,27 +204,35 @@ def CERTIFICATE_SEARCH():
                                     print((f"{Fore.CYAN}[+]{Style.RESET_ALL} found {Fore.BLUE}{DM}{Style.RESET_ALL} from the SSL certificate"))
                                     VALID_SUBDOMAINS.append(DM)
 
-        except requests.exceptions.ConnectionError:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
-
 def SECURITYTRAILS_GET_SUBDOMAINS():
-    print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} SecurityTrails API subdomain scan output for: {Fore.BLUE}{TARGET_DOMAIN}{Style.RESET_ALL}")
-    ST = SecurityTrails(API_KEYS.securitytrails)
+
     try:
-        ST.ping()
-    except SecurityTrailsError:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Invalid API key")
-        exit()   
+        REPONSE = REQUESTS.get("https://securitytrails.com")
+        STATUS_CODE = REPONSE.status_code
+    except requests.exceptions.ConnectionError:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}securitytrails.com{Style.RESET_ALL} seems to be down, skipping . . . ")
+    
+    if STATUS_CODE != 200:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}securitytrails.com{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
+    
+    else:
+        print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} SecurityTrails API subdomain scan output for: {Fore.BLUE}{TARGET_DOMAIN}{Style.RESET_ALL}")
+        ST = SecurityTrails(API_KEYS.securitytrails)
+        try:
+            ST.ping()
+        except SecurityTrailsError:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Invalid API key")
+            exit()   
 
-    SUBDOMAINS_ST = ST.domain_subdomains(TARGET_DOMAIN)
-    for SUBDOMAIN in SUBDOMAINS_ST['subdomains']:
-        RESULT_DOMAIN = f"{SUBDOMAIN.strip()}.{TARGET_DOMAIN}"
-        print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL}")
+        SUBDOMAINS_ST = ST.domain_subdomains(TARGET_DOMAIN)
+        for SUBDOMAIN in SUBDOMAINS_ST['subdomains']:
+            RESULT_DOMAIN = f"{SUBDOMAIN.strip()}.{TARGET_DOMAIN}"
+            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.BLUE}{RESULT_DOMAIN}{Style.RESET_ALL}")
 
-        if SUBDOMAIN in VALID_SUBDOMAINS is not None:
-            pass
-        else:
-            VALID_SUBDOMAINS.append(RESULT_DOMAIN)
+            if SUBDOMAIN in VALID_SUBDOMAINS is not None:
+                pass
+            else:
+                VALID_SUBDOMAINS.append(RESULT_DOMAIN)
 
 def SUB_ENUM():
 
@@ -446,22 +456,25 @@ def MAIN():
 
             if API_KEYS.securitytrails != None:
                 THREAD(SECURITYTRAILS_GET_SUBDOMAINS)
+            if API_KEYS.securitytrails is None:
+                SEPARATOR()
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} No SecurityTrails API key supplied, skipping . . .")
 
             THREAD(SUB_IP)
             THREAD(IS_CF_IP)
             THREAD(IS_AKAMAI)
 
-            if API_KEYS.shodan:
+            if API_KEYS.shodan != None:
                 THREAD(SHODAN_LOOKUP)
-        
-    
+            if API_KEYS.shodan is None:
+                SEPARATOR()
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} No Shodan API key supplied, skipping . . .")
+
             if WRITE == True:
 
                 with open(f"{TARGET_DOMAIN}-results.txt", "w") as FILE:
-
                     for SUBDOMAIN in VALID_SUBDOMAINS:
                             FILE.write(f"VALID SUBDOMAIN: {SUBDOMAIN}\n")
-
                     for IP in NOT_CLOUDFLARE:
                             FILE.write(f"LEAKED IP: {IP}\n")
                     
@@ -474,7 +487,6 @@ def MAIN():
 
         except KeyboardInterrupt:
             print("[i] Keyboard interrupt detected, exiting...")
-
         except Exception as e:
             print(f"[-] Exception occured\n--> {e}")
 
