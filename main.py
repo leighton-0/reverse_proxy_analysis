@@ -42,7 +42,7 @@ print (f"{Fore.YELLOW}{ASCII_RENDER}{Style.RESET_ALL}")
 PARSER = argparse.ArgumentParser(description = 'CDNRECON - A Content Delivery Network recon tool')
 
 PARSER.add_argument('TARGET_DOMAIN', metavar ='domain', help ='Domain to scan')
-PARSER.add_argument('-c', '--config', help ='Configurtation file (see github for syntax)')
+PARSER.add_argument('-c', '--config', help ='Configurtation file (see github for syntax)', default=f'{os.path.dirname(os.path.abspath(__file__))}/config.conf')
 PARSER.add_argument('-t', '--threads', help='Max threads the program will use.', default='20')
 PARSER.add_argument('-o', '--output', help="Write results to the specified file", default=None)
 
@@ -74,7 +74,6 @@ if ARGS.config != None:
         LINE = LINE.strip()
         if len(LINE.split("=")) == 2:
             exec(f'API_KEYS.{LINE.split("=")[0]} = "{LINE.split("=")[1].strip()}"')
-
 # Initialize colorama
 
 if os.name == 'nt':
@@ -438,7 +437,7 @@ def THREAD(FUNCTION):
     REMOVE_DUPLICATES()
 
 def MAIN():
-
+        print(API_KEYS.securitytrails)
         try:
 
             START_TIME = time.perf_counter()
@@ -449,14 +448,14 @@ def MAIN():
             THREAD(CERTIFICATE_SEARCH)
             THREAD(SUB_ENUM)
 
-            if API_KEYS.securitytrails != None:
+            if API_KEYS.securitytrails != "":
                 THREAD(SECURITYTRAILS_GET_SUBDOMAINS)
 
             THREAD(SUB_IP)
             THREAD(IS_CF_IP)
             THREAD(IS_AKAMAI)
 
-            if API_KEYS.shodan:
+            if API_KEYS.shodan != "":
                 THREAD(SHODAN_LOOKUP)
 
             SEPARATOR()
