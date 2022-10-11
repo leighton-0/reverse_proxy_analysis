@@ -4,9 +4,9 @@
 # / /___/ /_/ / /|  / _, _/ /___/ /___/ /_/ / /|  /  
 # \____/_____/_/ |_/_/ |_/_____/\____/\____/_/ |_/   
 #                                                     
-# Created by @Juuso1337 and @R00tendo
+# Created by @256o and @R00tendo
 # This program tries to find the origin IP address of a website protected by a reverse proxy
-# Download the latest version from github.com/juuso1337/CDNRECON
+# Download the latest version from github.com/256o/CDNRECON
 # Version 1.2.1
 
 ################################################################# All libraries required by this program
