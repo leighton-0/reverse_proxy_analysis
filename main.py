@@ -203,8 +203,8 @@ def CERTIFICATE_SEARCH():
 def SECURITYTRAILS_GET_SUBDOMAINS():
 
     try:
-        REPONSE = REQUESTS.get("https://api.securitytrails.com")
-        STATUS_CODE = REPONSE.status_code
+        RESPONSE = requests.get("https://api.securitytrails.com")
+        STATUS_CODE = RESPONSE.status_code
     except requests.exceptions.ConnectionError:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}securitytrails.com{Style.RESET_ALL} seems to be down, skipping . . . ")
     
