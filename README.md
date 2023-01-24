@@ -1,6 +1,8 @@
 # CDNRECON: Peel back the layers of the web
 CDNRECON is a tool that tries to find the origin or backend IP address of a website protected by a CDNs reverse proxy. This tool can be useful in penetration testing to identify the true target IP and in reconnaissance to identify the hosting provider or data center of a website. You can also simply use it to test your own website for any leaks.
 
+It's important to note that CDNRECON is a tool for educational purpose and should not be used for any illegal activities. Additionally, it's not guaranteed to be 100% accurate and some websites may have additional security measures in place to prevent this information from being revealed. The author will not be responsible for any misuse of the above information.
+
 Short summary of it's functionality:
 - Identify the origin IP behind a CDN's reverse proxy
 - Display information about the hosting provider and data center of the website
