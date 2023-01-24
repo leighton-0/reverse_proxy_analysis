@@ -1,7 +1,12 @@
-## CDNRECON - A Content Delivery Network recon tool
-<b>CDNRECON is a reconnaissance tool that tries to find the origin or backend IP address of a website protected by a CDNs reverse proxy. You can use it to get a head start when penetration testing a client protected by one aswell as to find possible misconfigurations on your own server. What ever your use case may be, CDNRECON can also be used as a general recon / scanning tool since it automates some common recon tasks in the process.
+# CDNRECON: Peel back the layers of the web
+CDNRECON is a tool that tries to find the origin or backend IP address of a website protected by a CDNs reverse proxy. This tool can be useful in penetration testing to identify the true target IP and in reconnaissance to identify the hosting provider or data center of a website. You can also simply use it to test your own website for any leaks.
 
-<b>The things CDNRECON does:
+Short summary of it's functionality:
+- Identify the origin IP behind a CDN's reverse proxy
+- Display information about the hosting provider and data center of the website
+- Support for both HTTP and HTTPS
+
+A more in-depth chronological order of what it does:
 - Checks the target domain nameservers
 - Dumps DNS records with DNSDumpster
 - Gets subdomains from the target domains SSL certificate
@@ -13,9 +18,7 @@
 - Optionally returns data from Shodan for possibly leaked IP addresses
 - Optionally writes the results to target.com-results.txt file
 
-Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to supply them for maximum output, CDNRECON tries other things before using them.
-
- <b>Checking the nameservers, common subdomains and their IP addresses</b>
+ Checking the nameservers, common subdomains and their IP addresses
  ```
     __________  _   ______  ________________  _   __
    / ____/ __ \/ | / / __ \/ ____/ ____/ __ \/ | / /
@@ -41,7 +44,7 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 [+] support.cloudflare.com has an IP address of 104.18.39.119
 ==================================================
 ````
-<b>Getting subdomains from the target domains SSL certificate</b>
+Getting subdomains from the target domains SSL certificate
 ````
 [i] Getting subdomains from juuso.computer's SSL certificate . . .
 [i] This might take a while, hang tight
@@ -53,7 +56,7 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 [i] DNSDumpster output for juuso.computer
 [+] juuso.computer seems to be valid
 ````
- <b>Checking if the IP addresses belong to Cloudflare</b>
+ Checking if the IP addresses belong to Cloudflare
 ````
 ==================================================
 [i] Checking if 104.16.124.96 is Cloudflare . . .
@@ -72,7 +75,7 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 [+] Country: Canada
   
 ````
- <b>Checking if the IP addresses belong to Akamai and if they're using the AkamaiGHost server</b>
+Checking if the IP addresses belong to Akamai and if they're using the AkamaiGHost server
 ```
 [i] Checking if 23.61.197.234 is Akamai . . .
 [+] 23.61.197.234 Server detected as AkamaiGHost
@@ -82,7 +85,7 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 [+] Country: Sweden
 ==================================================
 ````
-<b>Returns data for non Cloudflare IP addresses from Shodan</b>
+Returns data for non Cloudflare IP addresses from Shodan
 ````
 [i] Shodan results for 23.61.197.234
 [+] ISP: Akamai Technologies, Inc.
@@ -99,20 +102,20 @@ Shodan and SecurityTrails API keys are NOT required. Altough it's recommended to
 ````
 ## Installation and usage
 
-<b>Requires atleast python version 3.6 since it uses f-strings.
+Requires atleast python version 3.6 since it uses f-strings.
 >Tested on Arch Linux. It should work on any Linux distribution and Windows.
 
-<b>Clone the repository
+Clone the repository
 ```
 $ git clone https://github.com/Juuso1337/CDNRECON
 ```
-<b>Install the required depencies
+Install the required depencies
 ```
 $ cd CDNRECON
 $ pip install https://github.com/PaulSec/API-dnsdumpster.com/archive/master.zip --user
 $ pip3 install -r requirements.txt
 ```
-<b>Sample usage guide
+Sample usage guide
 
 ```
 $ nano config
@@ -121,7 +124,7 @@ $ put securitytrails=API-KEY-HERE on line 2
 $ CTRL + X to save
 $ python3 main.py example.com -c config
 ```
-<b> For more in-depth usage info, supply the -h flag (python3 main.py -h).</b>
+For more in-depth usage info, supply the -h flag (python3 main.py -h).
 ````
 usage: main.py [-h] [--write] domain [shodan]
 
