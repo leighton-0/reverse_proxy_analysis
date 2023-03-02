@@ -94,22 +94,6 @@ USER_AGENT_STRINGS = [
 #      Define functions      #
 ##############################
 
-def IS_POINTING_TO_CF():
-
-        if WIN == True:
-            pass
-
-        else:
-            print(f"{Fore.MAGENTA}[i]{Style.RESET_ALL} Checking {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} nameservers . . .")
-            NS_RECORD = pydig.query(TARGET_DOMAIN, "NS")
-
-            if 'cloudflare' in str(NS_RECORD):
-                print(f"{Fore.CYAN}[+]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is pointing to Cloudflares nameservers")
-            else:
-                print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}{TARGET_DOMAIN}{Style.RESET_ALL} is not pointing to Cloudflares nameservers")
-            
-            print(f"{Fore.CYAN}[+]{Style.RESET_ALL} Nameservers: {Fore.MAGENTA}{', '.join(NS_RECORD).replace('., ', ', ')[:-1]}{Style.RESET_ALL}")
-
 def DNSDUMPSTER():
 
     try:
@@ -443,8 +427,6 @@ def MAIN():
             ASCII = Figlet(font='slant', width=100)
             ASCII_RENDER = ASCII.renderText("CDNRECON")
             print (f"{Fore.YELLOW}{ASCII_RENDER}")
-
-            IS_POINTING_TO_CF()
 
             THREAD(DNSDUMPSTER)
             THREAD(CERTIFICATE_SEARCH)
