@@ -163,9 +163,6 @@ def CERTIFICATE_SEARCH():
         try:
             RESPONSE = requests.get('https://crt.sh/', params=PARAMS, headers=HEADERS)
             STATUS_CODE = RESPONSE.status_code
-        except requests.exceptions.ConnectionError:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
-
             if STATUS_CODE != 200:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
@@ -183,6 +180,8 @@ def CERTIFICATE_SEARCH():
                             if TARGET_DOMAIN in DM and " " not in DM and DM not in VALID_SUBDOMAINS:
                                     print((f"{Fore.CYAN}[+]{Style.RESET_ALL} found {Fore.BLUE}{DM}{Style.RESET_ALL} from the SSL certificate"))
                                     VALID_SUBDOMAINS.append(DM)
+        except:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} {Fore.MAGENTA}crt.sh{Style.RESET_ALL} isn't responding the way we want to, skipping . . .")
 
 def SECURITYTRAILS_GET_SUBDOMAINS():
 
@@ -428,7 +427,7 @@ def MAIN():
             ASCII_RENDER = ASCII.renderText("CDNRECON")
             print (f"{Fore.YELLOW}{ASCII_RENDER}")
 
-            THREAD(DNSDUMPSTER)
+            #THREAD(DNSDUMPSTER) API NOT WORKING
             THREAD(CERTIFICATE_SEARCH)
             THREAD(SUB_ENUM)
 
